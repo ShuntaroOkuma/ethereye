@@ -3,14 +3,12 @@ package transactions
 import (
 	"encoding/json"
 	"errors"
+	. "ethereye/utils"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 // Transaction struct definition
@@ -35,12 +33,6 @@ type TransactionDetails struct {
 	InputData string `json:"inputData"`
 }
 
-type EtherscanResponse struct {
-	Status  string        `json:"status"`
-	Message string        `json:"message"`
-	Result  []Transaction `json:"result"`
-}
-
 type TransactionStatus struct {
 	TxID   string `json:"txid"`
 	Status string `json:"status"`
@@ -56,85 +48,85 @@ type TokenTransfer struct {
 	ContractAddr string  `json:"contractAddress"`
 }
 
-var apiKey string
-
-func LoadEnv() {
-	err := godotenv.Load("../.env")
-	if err != nil {
-		fmt.Printf("Can't read .env: %v", err)
-	}
-	apiKey = os.Getenv("ETHERSCAN_APT_KEY")
-}
-
 /******************
 Transactions
 ******************/
 
-func FetchTransactions(walletAddress string, startIndex int, count int, apiKey string) ([]Transaction, error) {
-	apiUrl := fmt.Sprintf("https://api.etherscan.io/api?module=account&action=txlist&address=%s&startblock=0&endblock=99999999&sort=desc&apikey=%s", walletAddress, apiKey)
+func FetchTransactions(apiKey, walletAddress string) ([]Transaction, error) {
+	var result []Transaction
+
+	url := fmt.Sprintf("https://api.etherscan.io/api?module=account&action=txlist&address=%s&startblock=0&endblock=99999999&sort=asc&apikey=%s", walletAddress, apiKey)
 
 	// Send the HTTP request to the Etherscan API
-	resp, err := http.Get(apiUrl)
+	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var etherscanResponse EtherscanResponse
-	err = json.Unmarshal(body, &etherscanResponse)
+	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if the API returned an error message
-	if etherscanResponse.Message != "OK" {
-		return nil, errors.New(etherscanResponse.Message)
+	var jsonData map[string]interface{}
+	err = json.Unmarshal(data, &jsonData)
+	if err != nil {
+		return nil, err
 	}
 
-	// Filter transactions based on startIndex and count
-	if !(startIndex > 0) {
-		startIndex = 0
+	if jsonData["status"].(string) != "1" {
+		return nil, fmt.Errorf("error fetching transactions: %s", jsonData)
 	}
-	if !(count > 0) {
-		count = len(etherscanResponse.Result)
+
+	transactions := jsonData["result"].([]interface{})
+
+	for _, tx := range transactions {
+		txData := tx.(map[string]interface{})
+		blockHeight, _ := strconv.Atoi(txData["blockNumber"].(string))
+		timestamp, _ := strconv.Atoi(txData["timeStamp"].(string))
+
+		transaction := Transaction{
+			ID:          txData["hash"].(string),
+			FromAddress: txData["from"].(string),
+			ToAddress:   txData["to"].(string),
+			Value:       txData["value"].(string),
+			GasPrice:    txData["gasPrice"].(string),
+			TokenType:   "ETH",
+			BlockHeight: uint64(blockHeight),
+			Status:      txData["txreceipt_status"].(string),
+			Timestamp:   time.Unix(int64(timestamp), 0),
+		}
+		result = append(result, transaction)
 	}
-	endIndex := startIndex + count
-	if endIndex > len(etherscanResponse.Result) {
-		endIndex = len(etherscanResponse.Result)
-	}
-	return etherscanResponse.Result[startIndex:endIndex], nil
+
+	return result, nil
 }
 
 // Transactions API handler
-func TransactionsHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse the query parameters
-	walletAddress := r.URL.Query().Get("address")
-	if walletAddress == "" {
-		http.Error(w, "Missing 'address' query parameter", http.StatusBadRequest)
-		return
+func TransactionsHandler(apiKey string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Parse the query parameters
+		walletAddress := r.URL.Query().Get("address")
+		if walletAddress == "" {
+			http.Error(w, "Missing 'address' query parameter", http.StatusBadRequest)
+			return
+		}
+
+		apiKey := GetApiKey()
+
+		// Fetch the transactions
+		transactions, err := FetchTransactions(apiKey, walletAddress)
+
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error fetching transactions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(transactions)
 	}
-	startIndex, _ := strconv.Atoi(r.URL.Query().Get("startIndex"))
-	count, _ := strconv.Atoi(r.URL.Query().Get("count"))
-
-	// load .env
-	LoadEnv()
-
-	// Fetch the transactions
-	transactions, err := FetchTransactions(walletAddress, startIndex, count, apiKey)
-
-	if err != nil {
-		http.Error(w, "Error fetching transactions", http.StatusInternalServerError)
-		return
-	}
-
-	// Write the JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(transactions)
 }
 
 /******************
@@ -266,7 +258,7 @@ Filtering Transaction
 ******************/
 func FetchFilteredTransactions(walletAddress string, apiKey string, startDate *time.Time, endDate *time.Time, tokenType string) ([]Transaction, error) {
 	// Fetch transactions using Etherscan API
-	transactions, err := FetchTransactions(walletAddress, 0, 0, apiKey)
+	transactions, err := FetchTransactions(apiKey, walletAddress)
 	if err != nil {
 		return nil, err
 	}

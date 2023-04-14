@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"encoding/json"
+	. "ethereye/utils"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,10 +14,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var apiKey string
 var walletAddress string
 var transactionID string
 
-func LoadTestEnv() {
+func loadTestEnv() {
 	err := godotenv.Load("../.env.test")
 	if err != nil {
 		fmt.Printf("Can't read .env.test: %v", err)
@@ -29,9 +31,10 @@ func LoadTestEnv() {
 common
 ************/
 func serveHTTPTransactionsHandler(method string, url string) *httptest.ResponseRecorder {
+	apiKey := GetApiKey()
 	req, _ := http.NewRequest(method, url, nil)
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(TransactionsHandler)
+	handler := TransactionsHandler(apiKey)
 	handler.ServeHTTP(rr, req)
 
 	return rr
@@ -41,25 +44,23 @@ func serveHTTPTransactionsHandler(method string, url string) *httptest.ResponseR
 test body
 ************/
 func TestFetchTransactions(t *testing.T) {
-	LoadEnv()
-	LoadTestEnv()
+	apiKey := GetApiKey()
+	loadTestEnv()
 
-	startIndex := 1
-	count := 3
-	transactions, err := FetchTransactions(walletAddress, startIndex, count, apiKey)
+	transactions, err := FetchTransactions(apiKey, walletAddress)
 
 	if err != nil {
 		t.Errorf("fetchTransactions() returned an error: %v", err)
 	}
 
-	if len(transactions) != 3 {
+	if len(transactions) == 0 {
 		t.Error("fetchTransactions() returned an empty result")
 	}
 
 }
 
 func TestTransactionsHandler(t *testing.T) {
-	LoadTestEnv()
+	loadTestEnv()
 	t.Run("Test case 1: Valid wallet address", func(t *testing.T) {
 		rr := serveHTTPTransactionsHandler("GET", "/api/v1/transactions?address="+walletAddress)
 
@@ -100,31 +101,11 @@ func TestTransactionsHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("Test case 4: Transactions filtering with startIndex and count", func(t *testing.T) {
-		rr := serveHTTPTransactionsHandler("GET", "/api/v1/transactions?address="+walletAddress+"&startIndex=1&count=3")
-
-		if status := rr.Code; status != http.StatusOK {
-			t.Errorf("TransactionsHandler returned wrong status code: got %v want %v",
-				status, http.StatusOK)
-		}
-
-		var transactions []Transaction
-		err := json.NewDecoder(rr.Body).Decode(&transactions)
-
-		if err != nil {
-			t.Errorf("Failed to decode response JSON: %v", err)
-		}
-
-		if len(transactions) != 3 {
-			t.Errorf("Expected 3 transactions, got %d", len(transactions))
-		}
-	})
-
 }
 
 func TestFetchTransactionDetails(t *testing.T) {
-	LoadEnv()
-	LoadTestEnv()
+	apiKey := GetApiKey()
+	loadTestEnv()
 
 	transactionDetails, err := FetchTransactionDetails(transactionID, apiKey)
 
@@ -138,7 +119,7 @@ func TestFetchTransactionDetails(t *testing.T) {
 }
 
 func TestTransactionDetailsHandler(t *testing.T) {
-	LoadTestEnv()
+	loadTestEnv()
 
 	handler := TransactionDetailsHandler(apiKey)
 
@@ -174,8 +155,8 @@ func TestTransactionDetailsHandler(t *testing.T) {
 }
 
 func TestFetchTransactionStatus(t *testing.T) {
-	LoadEnv()
-	LoadTestEnv()
+	apiKey := GetApiKey()
+	loadTestEnv()
 
 	t.Run("Test with a valid transaction ID", func(t *testing.T) {
 		txStatus, err := FetchTransactionStatus(transactionID, apiKey)
@@ -218,8 +199,8 @@ func TestFetchTransactionStatus(t *testing.T) {
 }
 
 func TestFetchFilteredTransactions(t *testing.T) {
-	LoadEnv()
-	LoadTestEnv()
+	apiKey := GetApiKey()
+	loadTestEnv()
 
 	startDate := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2021, 12, 31, 23, 59, 59, 0, time.UTC)

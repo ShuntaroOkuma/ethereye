@@ -25,7 +25,7 @@ func main() {
 	apiKey := os.Getenv("ETHERSCAN_APT_KEY")
 
 	http.HandleFunc("/api/v1/favorites", FavoriteAddressHandler(storage))
-	http.HandleFunc("/api/v1/transactions", TransactionsHandler)
+	http.HandleFunc("/api/v1/transactions", TransactionsHandler(apiKey))
 	http.HandleFunc("/api/v1/transaction-details", TransactionDetailsHandler(apiKey))
 	http.HandleFunc("/api/v1/transaction-status", TransactionStatusHandler(apiKey))
 	http.HandleFunc("/filtered-transactions", FilteredTransactionsHandler(apiKey))
