@@ -1,0 +1,154 @@
+openapi: 3.0.0
+info:
+  title: EtherEye
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+paths:
+  /favoriteAddress:
+    post:
+      summary: Add a wallet address or token contract address to the favorites list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+      responses:
+        "200":
+          description: Successfully added to the favorites list
+        "400":
+          description: Invalid input
+  /transactions:
+    get:
+      summary: Retrieve a list of recent transactions related to a wallet address
+      parameters:
+        - name: walletAddress
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully retrieved transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid input
+  /transactionDetails:
+    get:
+      summary: Retrieve transaction details by transaction ID
+      parameters:
+        - name: transactionID
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully retrieved transaction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid input
+  /transactionStatus:
+    get:
+      summary: Retrieve the real-time status of a transaction
+      parameters:
+        - name: transactionID
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully retrieved transaction status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "400":
+          description: Invalid input
+  /filteredTransactions:
+    get:
+      summary: Retrieve filtered transactions by period and token type
+      parameters:
+        - name: walletAddress
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: tokenType
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully retrieved filtered transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid input
+
+components:
+  schemas:
+    Transaction:
+      type: object
+      properties:
+        hash:
+          type: string
+          description: The transaction ID
+        from:
+          type: string
+          description: The sender's wallet address
+        to:
+          type: string
+          description: The recipient's wallet address
+        value:
+          type: string
+          description: The amount of Ether transferred
+        gasPrice:
+          type: string
+          description: The gas price of the transaction
+        tokenType:
+          type: string
+          description: The type of token being transferred
+        blockHeight:
+          type: integer
+          description: The block height at which the transaction was included
+        status:
+          type: string
+          description: The status of the transaction (pending, success, failed)
+        timeStamp:
+          type: string
+          format: date-time
+          description: The timestamp of the transaction

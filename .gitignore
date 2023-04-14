@@ -17,4 +17,4 @@
 .env*
 
 node_modules
-**/node_modules
+swagger/node_modules
