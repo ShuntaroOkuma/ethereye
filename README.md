@@ -37,7 +37,7 @@ go run main.go
 
 Your terminal will shows "Starting server on port 8080...", and now you can access `http://localhost:8080/`.
 
-- Run API
+- Execute API
 
 Replace `YOUR_WALLET_ADDRESS` to you wallet adress in the following URL, and access it with you browser, you can obtain information about the transaction.
 
@@ -48,6 +48,8 @@ http://localhost:8080/api/v1/transactions?address=YOUR_WALLET_ADDRESS
 ## See API docs
 
 Refer to the provided API documentation (Swagger UI format) for detailed information on each endpoint, including the required input parameters, expected output, and any applicable error messages.
+
+You can access ``, but in order to execute the API from here, you need to have already launched the API on localhost.
 
 Run below command.
 
