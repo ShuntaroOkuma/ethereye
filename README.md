@@ -49,8 +49,6 @@ http://localhost:8080/api/v1/transactions?address=YOUR_WALLET_ADDRESS
 
 Refer to the provided API documentation (Swagger UI format) for detailed information on each endpoint, including the required input parameters, expected output, and any applicable error messages.
 
-You can access ``, but in order to execute the API from here, you need to have already launched the API on localhost.
-
 Run below command.
 
 ```sh
@@ -69,6 +67,8 @@ Swagger UI is available at http://localhost:3001
 ```
 
 And access http://localhost:3001 with your browser, and you can see API docs.
+
+If you want to execute the API from here, you need to have already launched the API on localhost.
 
 # Features
 
